@@ -65,6 +65,8 @@ import java.io.PrintStream;
 import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Collection;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 /**
  * User configuration for one library.
@@ -136,6 +138,28 @@ public class LibraryConfiguration extends AbstractDescribableImpl<LibraryConfigu
      * @see #allowVersionBRANCH_NAME
      */
     private boolean allowVersionBRANCH_NAME_PR = false;
+
+    /**
+     * Regular expression (per {@link Pattern#matches(String, CharSequence)})
+     * that a revision resolved <em>dynamically</em> (by {@link #allowVersionBRANCH_NAME}
+     * or {@link #allowVersionEnvvar} handling, including their {@code CHANGE_BRANCH}/
+     * {@code CHANGE_TARGET} fallbacks) must satisfy before it is even attempted
+     * with {@link LibraryRetriever#validateVersion}. A revision picked by a
+     * pipeline author via a literal, fixed string under {@link #allowVersionOverride}
+     * alone is not subject to this check.<br/>
+     *
+     * Defaults to {@code ^.*$} (allow anything) for backward compatibility;
+     * admins may narrow this down, e.g. to defend against a dynamically
+     * resolved revision picking an unwanted branch of the library or even directly
+     * load an old, flawed, commit hash with a bug long fixed on actual branches.
+     *
+     * @see #allowVersionBRANCH_NAME
+     * @see #allowVersionBRANCH_NAME_PR
+     * @see #allowVersionEnvvar
+     */
+    private String dynamicVersionsPattern;
+
+    static final String DEFAULT_DYNAMIC_VERSIONS_PATTERN = "^.*$";
 
     /** Print {@link #defaultedVersion} progress resolving literal
      * {@code ${BRANCH_NAME}} or {@code ${env.VARNAME}} patterns as
@@ -246,6 +270,20 @@ public class LibraryConfiguration extends AbstractDescribableImpl<LibraryConfigu
 
     @DataBoundSetter public void setAllowVersionBRANCH_NAME_PR(boolean allowVersionBRANCH_NAME_PR) {
         this.allowVersionBRANCH_NAME_PR = allowVersionBRANCH_NAME_PR;
+    }
+
+    /**
+     * Regular expression restricting which dynamically-resolved revisions
+     * (see {@link #isAllowVersionBRANCH_NAME} and {@link #isAllowVersionEnvvar})
+     * are permitted; anything not matching falls back to {@link #getDefaultVersion}.
+     * Never {@code null}; defaults to {@value #DEFAULT_DYNAMIC_VERSIONS_PATTERN} (allow anything).
+     */
+    public String getDynamicVersionsPattern() {
+        return dynamicVersionsPattern != null ? dynamicVersionsPattern : DEFAULT_DYNAMIC_VERSIONS_PATTERN;
+    }
+
+    @DataBoundSetter public void setDynamicVersionsPattern(String dynamicVersionsPattern) {
+        this.dynamicVersionsPattern = Util.fixEmptyAndTrim(dynamicVersionsPattern);
     }
 
     /**
@@ -630,6 +668,33 @@ public class LibraryConfiguration extends AbstractDescribableImpl<LibraryConfigu
         return runVersion;
     }
 
+    /**
+     * Checks a dynamically-resolved candidate revision (from {@code ${BRANCH_NAME}},
+     * {@code ${env.VARNAME}}, {@code CHANGE_BRANCH} or {@code CHANGE_TARGET} handling)
+     * against {@link #getDynamicVersionsPattern}. An unparsable pattern is treated as
+     * rejecting everything, so a typo in the admin-configured regex fails closed rather
+     * than silently falling back to "allow everything".
+     */
+    private boolean isDynamicVersionAllowed(@NonNull String candidateVersion, PrintStream logger) {
+        String regex = getDynamicVersionsPattern();
+        try {
+            if (Pattern.matches(regex, candidateVersion)) {
+                return true;
+            }
+        } catch (PatternSyntaxException x) {
+            if (logger != null) {
+                logger.println("defaultedVersion(): dynamicVersionsPattern '" + regex +
+                        "' is not a valid regular expression, rejecting '" + candidateVersion + "': " + x.getMessage());
+            }
+            return false;
+        }
+        if (logger != null) {
+            logger.println("defaultedVersion(): runVersion '" + candidateVersion +
+                    "' does not match dynamicVersionsPattern '" + regex + "', rejecting");
+        }
+        return false;
+    }
+
     @NonNull String defaultedVersion(@CheckForNull String version) throws AbortException {
         return defaultedVersion(version, null, null);
     }
@@ -718,7 +783,7 @@ public class LibraryConfiguration extends AbstractDescribableImpl<LibraryConfigu
 
             // Check if runVersion is resolvable by LibraryRetriever
             // implementation (SCM, HTTP, etc.); fall back if not:
-            if (retriever != null) {
+            if (retriever != null && isDynamicVersionAllowed(runVersion, logger)) {
                 if (logger != null) {
                     logger.println("defaultedVersion(): Trying to validate runVersion: " + runVersion);
                 }
@@ -856,14 +921,16 @@ public class LibraryConfiguration extends AbstractDescribableImpl<LibraryConfigu
             // Check if runVersion is resolvable by LibraryRetriever
             // implementation (SCM, HTTP, etc.); fall back if not:
             if (retriever != null) {
-                if (logger != null) {
-                    logger.println("defaultedVersion(): Trying to validate runVersion: " + runVersion);
-                }
+                if (isDynamicVersionAllowed(runVersion, logger)) {
+                    if (logger != null) {
+                        logger.println("defaultedVersion(): Trying to validate runVersion: " + runVersion);
+                    }
 
-                FormValidation fv = retriever.validateVersion(name, runVersion, runParent);
+                    FormValidation fv = retriever.validateVersion(name, runVersion, runParent);
 
-                if (fv != null && fv.kind == FormValidation.Kind.OK) {
-                    return runVersion;
+                    if (fv != null && fv.kind == FormValidation.Kind.OK) {
+                        return runVersion;
+                    }
                 }
 
                 if (runVersion.startsWith("PR-") && allowVersionBRANCH_NAME_PR) {
@@ -882,11 +949,11 @@ public class LibraryConfiguration extends AbstractDescribableImpl<LibraryConfigu
                     } catch (Exception x) {
                         runVersion = null;
                     }
-                    if (runVersion != null && !("".equals(runVersion))) {
+                    if (runVersion != null && !("".equals(runVersion)) && isDynamicVersionAllowed(runVersion, logger)) {
                         if (logger != null) {
                             logger.println("defaultedVersion(): Trying to validate CHANGE_BRANCH: " + runVersion);
                         }
-                        fv = retriever.validateVersion(name, runVersion, runParent);
+                        FormValidation fv = retriever.validateVersion(name, runVersion, runParent);
 
                         if (fv != null && fv.kind == FormValidation.Kind.OK) {
                             return runVersion;
@@ -901,11 +968,11 @@ public class LibraryConfiguration extends AbstractDescribableImpl<LibraryConfigu
                     } catch (Exception x) {
                         runVersion = null;
                     }
-                    if (runVersion != null && !("".equals(runVersion))) {
+                    if (runVersion != null && !("".equals(runVersion)) && isDynamicVersionAllowed(runVersion, logger)) {
                         if (logger != null) {
                             logger.println("defaultedVersion(): Trying to validate CHANGE_TARGET: " + runVersion);
                         }
-                        fv = retriever.validateVersion(name, runVersion, runParent);
+                        FormValidation fv = retriever.validateVersion(name, runVersion, runParent);
 
                         if (fv != null && fv.kind == FormValidation.Kind.OK) {
                             return runVersion;
@@ -948,6 +1015,25 @@ public class LibraryConfiguration extends AbstractDescribableImpl<LibraryConfigu
                 return FormValidation.error("You must enter a name.");
             }
             // Currently no character restrictions.
+            return FormValidation.ok();
+        }
+
+        @RequirePOST
+        public FormValidation doCheckDynamicVersionsPattern(@AncestorInPath Item context, @QueryParameter String value) {
+            if (context == null) {
+                Jenkins.get().checkPermission(Jenkins.ADMINISTER);
+            } else {
+                context.checkPermission(Item.CONFIGURE);
+            }
+            String regex = Util.fixEmptyAndTrim(value);
+            if (regex == null) {
+                return FormValidation.ok();
+            }
+            try {
+                Pattern.compile(regex);
+            } catch (PatternSyntaxException x) {
+                return FormValidation.error("Not a valid regular expression: " + x.getMessage());
+            }
             return FormValidation.ok();
         }
 

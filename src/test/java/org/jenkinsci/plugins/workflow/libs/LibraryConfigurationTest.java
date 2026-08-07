@@ -26,6 +26,7 @@ package org.jenkinsci.plugins.workflow.libs;
 
 import hudson.AbortException;
 import hudson.plugins.git.GitSCM;
+import hudson.util.FormValidation;
 import org.hamcrest.Matchers;
 import org.junit.Test;
 import org.junit.Assert;
@@ -196,5 +197,38 @@ public class LibraryConfigurationTest {
      * deny existence of a requested "version" (e.g. Git branch) of the lib.
      * For examples, see e.g. SCMSourceRetrieverTest codebase.
      */
+
+    @Issue("JENKINS-69731")
+    @Test public void dynamicVersionsPatternDefaultsToAllowEverything() {
+        LibraryConfiguration cfg = new LibraryConfiguration("valid-name", new SCMRetriever(new GitSCM("https://phony.jenkins.io/bar.git")));
+
+        assertEquals("^.*$", cfg.getDynamicVersionsPattern());
+    }
+
+    @Issue("JENKINS-69731")
+    @Test public void dynamicVersionsPatternRoundTrip() {
+        LibraryConfiguration cfg = new LibraryConfiguration("valid-name", new SCMRetriever(new GitSCM("https://phony.jenkins.io/bar.git")));
+
+        cfg.setDynamicVersionsPattern("^(main|release/.*)$");
+        assertEquals("^(main|release/.*)$", cfg.getDynamicVersionsPattern());
+
+        // Clearing the field reverts to the allow-everything default, not null/empty:
+        cfg.setDynamicVersionsPattern("");
+        assertEquals("^.*$", cfg.getDynamicVersionsPattern());
+
+        cfg.setDynamicVersionsPattern(null);
+        assertEquals("^.*$", cfg.getDynamicVersionsPattern());
+    }
+
+    @Issue("JENKINS-69731")
+    @Test public void dynamicVersionsPatternFormValidation() {
+        LibraryConfiguration.DescriptorImpl descriptor = r.jenkins.getDescriptorByType(LibraryConfiguration.DescriptorImpl.class);
+
+        // context=null simulates the global (Manage Jenkins) configuration scope.
+        assertEquals(FormValidation.Kind.OK, descriptor.doCheckDynamicVersionsPattern(null, "^.*$").kind);
+        assertEquals(FormValidation.Kind.OK, descriptor.doCheckDynamicVersionsPattern(null, "").kind);
+        assertEquals(FormValidation.Kind.OK, descriptor.doCheckDynamicVersionsPattern(null, null).kind);
+        assertEquals(FormValidation.Kind.ERROR, descriptor.doCheckDynamicVersionsPattern(null, "[unterminated").kind);
+    }
 
 }

@@ -935,6 +935,85 @@ public class SCMSourceRetrieverTest {
     }
 
     @Issue("JENKINS-69731")
+    @Test public void checkDefaultVersion_singleBranch_BRANCH_NAME_dynamicVersionsPatternBlocks() throws Exception {
+        // Test that dynamicVersionsPattern can reject a dynamically
+        // resolved ${BRANCH_NAME} value ("feature" here), falling
+        // back to the configured default version instead.
+        assumeFalse("SKIP by pre-test assumption: " +
+                        "An externally provided BRANCH_NAME envvar interferes with tested logic",
+            System.getenv("BRANCH_NAME") != null);
+
+        sampleRepo1ContentMasterFeature();
+        SCMSourceRetriever scm = new SCMSourceRetriever(new GitSCMSource(null, sampleRepo.toString(), "", "*", "", true));
+        LibraryConfiguration lc = new LibraryConfiguration("branchylib", scm);
+        lc.setDefaultVersion("master");
+        lc.setIncludeInChangesets(false);
+        lc.setAllowVersionOverride(false);
+        lc.setAllowVersionBRANCH_NAME(true);
+        lc.setTraceDefaultedVersion(true);
+        lc.setDynamicVersionsPattern("^master$"); // "feature" would otherwise resolve; this rejects it
+        GlobalLibraries.get().setLibraries(Collections.singletonList(lc));
+
+        sampleRepo2ContentSameMasterFeatureBogus_BRANCH_NAME();
+
+        // Get a non-default branch loaded for this single-branch build:
+        GitSCM gitSCM = new GitSCM(
+                GitSCM.createRepoList(sampleRepo2.toString(), null),
+                Collections.singletonList(new BranchSpec("*/feature")),
+                null, null, Collections.emptyList());
+
+        WorkflowJob p0 = r.jenkins.createProject(WorkflowJob.class, "p0");
+        p0.setDefinition(new CpsScmFlowDefinition(gitSCM, "Jenkinsfile"));
+        sampleRepoNotifyCommit(sampleRepo2);
+        r.waitUntilNoActivity();
+
+        WorkflowRun b0 = r.buildAndAssertSuccess(p0);
+        // Job asked for "feature", regex forbade it, checkout fell back to "master" default:
+        r.assertLogContains("Loading library branchylib@master", b0);
+        r.assertLogContains("something special", b0);
+        r.assertLogNotContains("something very special", b0);
+    }
+
+    @Issue("JENKINS-69731")
+    @Test public void checkDefaultVersion_singleBranch_BRANCH_NAME_dynamicVersionsPatternAllows() throws Exception {
+        // Test that dynamicVersionsPattern does not interfere with a
+        // dynamically resolved ${BRANCH_NAME} value ("feature" here)
+        // when explicitly configured to permit it.
+        assumeFalse("SKIP by pre-test assumption: " +
+                        "An externally provided BRANCH_NAME envvar interferes with tested logic",
+            System.getenv("BRANCH_NAME") != null);
+
+        sampleRepo1ContentMasterFeature();
+        SCMSourceRetriever scm = new SCMSourceRetriever(new GitSCMSource(null, sampleRepo.toString(), "", "*", "", true));
+        LibraryConfiguration lc = new LibraryConfiguration("branchylib", scm);
+        lc.setDefaultVersion("master");
+        lc.setIncludeInChangesets(false);
+        lc.setAllowVersionOverride(false);
+        lc.setAllowVersionBRANCH_NAME(true);
+        lc.setTraceDefaultedVersion(true);
+        lc.setDynamicVersionsPattern("^(master|feature)$"); // explicitly permits "feature"
+        GlobalLibraries.get().setLibraries(Collections.singletonList(lc));
+
+        sampleRepo2ContentSameMasterFeatureBogus_BRANCH_NAME();
+
+        // Get a non-default branch loaded for this single-branch build:
+        GitSCM gitSCM = new GitSCM(
+                GitSCM.createRepoList(sampleRepo2.toString(), null),
+                Collections.singletonList(new BranchSpec("*/feature")),
+                null, null, Collections.emptyList());
+
+        WorkflowJob p0 = r.jenkins.createProject(WorkflowJob.class, "p0");
+        p0.setDefinition(new CpsScmFlowDefinition(gitSCM, "Jenkinsfile"));
+        sampleRepoNotifyCommit(sampleRepo2);
+        r.waitUntilNoActivity();
+
+        WorkflowRun b0 = r.buildAndAssertSuccess(p0);
+        // Job asked for "feature", regex allowed it:
+        r.assertLogContains("Loading library branchylib@feature", b0);
+        r.assertLogContains("something very special", b0);
+    }
+
+    @Issue("JENKINS-69731")
     @Test public void checkDefaultVersion_singleBranch_BRANCH_NAME_after_staticStrings() throws Exception {
         // Test that using @Library('branchylib@static')
         // in one build of a job definition, and then a
