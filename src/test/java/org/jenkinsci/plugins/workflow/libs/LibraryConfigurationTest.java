@@ -24,8 +24,6 @@
 
 package org.jenkinsci.plugins.workflow.libs;
 
-import java.util.Collections;
-
 import hudson.AbortException;
 import hudson.plugins.git.GitSCM;
 import org.hamcrest.Matchers;
