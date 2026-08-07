@@ -27,7 +27,6 @@ package org.jenkinsci.plugins.workflow.libs;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.AbortException;
 import hudson.EnvVars;
-import hudson.ExtensionList;
 import hudson.FilePath;
 import hudson.Functions;
 import hudson.model.Computer;
@@ -52,7 +51,6 @@ import hudson.slaves.WorkspaceList;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
@@ -1234,35 +1232,14 @@ public class SCMSourceRetrieverTest {
         // https://github.com/jenkinsci/subversion-plugin/blob/c63586b2e57ab15cd5142dd349b53886194d90af/src/test/java/hudson/scm/SubversionSCMTest.java#L1383
         // test-case recursiveEnvironmentVariables()
 
-        // Per https://github.com/jenkinsci/jenkins/blob/031f40c50899ec4e5fa4d886a1c006a5330f2627/core/src/main/java/hudson/ExtensionList.java#L296
-        // in implementation of `add(index, T)` the index is ignored.
-        // So we save a copy in same order, drop the list, add our
-        // override as the only entry (hence highest priority)
-        // and re-add the original list contents.
-        ExtensionList<EnvironmentContributor> ecList = EnvironmentContributor.all();
-        List<EnvironmentContributor> ecOrig = new ArrayList();
-        for (EnvironmentContributor ec : ecList) {
-            ecOrig.add(ec);
-        }
-        ecList.removeAll(ecOrig);
-        assumeFalse("SKIP by pre-test assumption: " +
-                "EnvironmentContributor.all() should be empty now", !ecList.isEmpty());
-
-        ecList.add(new EnvironmentContributor() {
-            @Override public void buildEnvironmentFor(Run run, EnvVars ev, TaskListener tl) throws IOException, InterruptedException {
-                if (tl != null)
-                    tl.getLogger().println("[DEBUG:RUN] Injecting TEST_VAR_NAME='feature' to EnvVars");
-                ev.put("TEST_VAR_NAME", "feature");
-            }
-            @Override public void buildEnvironmentFor(Job run, EnvVars ev, TaskListener tl) throws IOException, InterruptedException {
-                if (tl != null)
-                    tl.getLogger().println("[DEBUG:JOB] Injecting TEST_VAR_NAME='feature' to EnvVars");
-                ev.put("TEST_VAR_NAME", "feature");
-            }
-        });
-        for (EnvironmentContributor ec : ecOrig) {
-            ecList.add(ec);
-        }
+        // Per https://github.com/jenkinsci/pipeline-groovy-lib-plugin/pull/19#discussion_r991179023
+        // jglick suggested registering an EnvironmentContributor via
+        // @TestExtension instead of poking at the live ExtensionList
+        // (whose `add(index, T)` ignores the index anyway, see
+        // https://github.com/jenkinsci/jenkins/blob/031f40c50899ec4e5fa4d886a1c006a5330f2627/core/src/main/java/hudson/ExtensionList.java#L296).
+        // TestVarNameContributor is registered for this test only; we
+        // "activate" its injection via its static field.
+        TestVarNameContributor.value = "feature";
 
         p1.scheduleBuild2(0);
         r.waitUntilNoActivity();
@@ -1302,8 +1279,8 @@ public class SCMSourceRetrieverTest {
         // which (as a Computer=>Node) has lowest priority behind
         // global and injected envvars (see Run::getEnvironment()).
         // Check with the injected envvars (they override) like above
-        // first, and with ecList contents restored to ecOrig state
-        // only (so only Computer envvars are applied).
+        // first, and later with TestVarNameContributor deactivated
+        // (so only Computer envvars are applied).
         // Trick here is that the "jenkins.model.Jenkins" is inherited
         // from Node and its toComputer() returns the "built-in" (nee
         // "master"), instance of "hudson.model.Hudson$MasterComputer"
@@ -1353,16 +1330,9 @@ public class SCMSourceRetrieverTest {
         r.assertLogContains("Groovy TEST_VAR_NAME='feature'", b4);
         r.assertLogContains("env.TEST_VAR_NAME='feature'", b4);
 
-        // Only build agent envvars are present: drop all,
-        // add back original (before our mock above):
-        List<EnvironmentContributor> ecCurr = new ArrayList();
-        for (EnvironmentContributor ec : ecList) {
-            ecCurr.add(ec);
-        }
-        ecList.removeAll(ecCurr);
-        for (EnvironmentContributor ec : ecOrig) {
-            ecList.add(ec);
-        }
+        // Only build agent envvars are present: stop injecting via
+        // TestVarNameContributor (undo our mock above):
+        TestVarNameContributor.value = null;
 
         System.out.println("[DEBUG:EXT:p1b5] EnvironmentContributor.all(): " + EnvironmentContributor.all());
         System.out.println("[DEBUG:EXT:p1b5] builtIn node env: " + builtInComputer.getEnvironment());
@@ -1402,6 +1372,30 @@ public class SCMSourceRetrieverTest {
         r.assertLogContains("something reliable", b6);
         r.assertLogContains("Groovy TEST_VAR_NAME missing", b6);
         r.assertLogContains("env.TEST_VAR_NAME='null'", b6);
+    }
+
+    /** Test-only {@link EnvironmentContributor} implementation for
+     * {@link #checkDefaultVersion_inline_allowVersionEnvvar} test case;
+     * set `value` to inject TEST_VAR_NAME, or null to stop injecting it. */
+    @TestExtension("checkDefaultVersion_inline_allowVersionEnvvar")
+    public static final class TestVarNameContributor extends EnvironmentContributor {
+        static volatile String value;
+        @Override public void buildEnvironmentFor(Run run, EnvVars ev, TaskListener tl) throws IOException, InterruptedException {
+            if (value != null) {
+                if (tl != null) {
+                    tl.getLogger().println("[DEBUG:RUN] Injecting TEST_VAR_NAME='" + value + "' to EnvVars");
+                }
+                ev.put("TEST_VAR_NAME", value);
+            }
+        }
+        @Override public void buildEnvironmentFor(Job job, EnvVars ev, TaskListener tl) throws IOException, InterruptedException {
+            if (value != null) {
+                if (tl != null) {
+                    tl.getLogger().println("[DEBUG:JOB] Injecting TEST_VAR_NAME='" + value + "' to EnvVars");
+                }
+                ev.put("TEST_VAR_NAME", value);
+            }
+        }
     }
 
     @Issue("JENKINS-43802")
