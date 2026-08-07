@@ -152,27 +152,27 @@ public class LibraryConfigurationTest {
 
         LibraryConfiguration cfg = new LibraryConfiguration(libraryName, new SCMRetriever(new GitSCM("https://phony.jenkins.io/bar.git")));
         cfg.setAllowVersionOverride(true);
-        cfg.setAllowBRANCH_NAME(false);
+        cfg.setAllowVersionBRANCH_NAME(false);
         cfg.setTraceDefaultedVersion(true);
 
         assertEquals(true, cfg.isAllowVersionOverride());
-        assertEquals(false, cfg.isAllowBRANCH_NAME());
+        assertEquals(false, cfg.isAllowVersionBRANCH_NAME());
         assertEquals(true, cfg.isTraceDefaultedVersion());
         assertThrows(AbortException.class, () -> cfg.defaultedVersion("${BRANCH_NAME}"));
         /* This SHOULD NOT return a version string that literally remains '${BRANCH_NAME}'! */
     }
 
     @Issue("JENKINS-69731")
-    @Test public void allowedBRANCH_NAMEnoRunPresentDefaultedVersion() {
+    @Test public void allowedVersionBRANCH_NAME__noRunPresentDefaultedVersion() {
         String libraryName = "valid-name";
         String defaultVersion = "master";
 
         LibraryConfiguration cfg = new LibraryConfiguration(libraryName, new SCMRetriever(new GitSCM("https://phony.jenkins.io/bar.git")));
         cfg.setDefaultVersion(defaultVersion);
-        cfg.setAllowBRANCH_NAME(true);
+        cfg.setAllowVersionBRANCH_NAME(true);
         cfg.setTraceDefaultedVersion(true);
 
-        assertEquals(true, cfg.isAllowBRANCH_NAME());
+        assertEquals(true, cfg.isAllowVersionBRANCH_NAME());
         try {
             assertEquals("master", cfg.defaultedVersion("${BRANCH_NAME}", null, null));
         } catch(AbortException ae) {
@@ -181,19 +181,19 @@ public class LibraryConfigurationTest {
     }
 
     @Issue("JENKINS-69731")
-    @Test public void allowedBRANCH_NAMEnoRunAbsentDefaultedVersion() {
+    @Test public void allowedVersionBRANCH_NAME__noRunAbsentDefaultedVersion() {
         String libraryName = "valid-name";
 
         LibraryConfiguration cfg = new LibraryConfiguration(libraryName, new SCMRetriever(new GitSCM("https://phony.jenkins.io/bar.git")));
-        cfg.setAllowBRANCH_NAME(true);
+        cfg.setAllowVersionBRANCH_NAME(true);
         cfg.setTraceDefaultedVersion(true);
 
-        assertEquals(true, cfg.isAllowBRANCH_NAME());
+        assertEquals(true, cfg.isAllowVersionBRANCH_NAME());
         assertThrows(AbortException.class, () -> cfg.defaultedVersion("${BRANCH_NAME}", null, null));
     }
 
-    /* Note: further tests for JENKINS-69731 behaviors with allowBRANCH_NAME
-     * would rely on having a Run with or without a BRANCH_NAME envvar, and
+    /* Note: further tests for JENKINS-69731 behaviors with allowVersionBRANCH_NAME
+     * toggle would rely on having a Run with or without a BRANCH_NAME envvar, and
      * a TaskListener, and a (mock?) LibraryRetriever that would confirm or
      * deny existence of a requested "version" (e.g. Git branch) of the lib.
      * For examples, see e.g. SCMSourceRetrieverTest codebase.

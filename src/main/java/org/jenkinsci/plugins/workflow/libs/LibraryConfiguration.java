@@ -90,7 +90,7 @@ public class LibraryConfiguration extends AbstractDescribableImpl<LibraryConfigu
      * that environment variable can't be resolved.
      *
      * @see #allowVersionOverride
-     * @see #allowBRANCH_NAME
+     * @see #allowVersionBRANCH_NAME
      */
     private boolean allowVersionEnvvar = false;
 
@@ -109,16 +109,16 @@ public class LibraryConfiguration extends AbstractDescribableImpl<LibraryConfigu
      *
      * @see #allowVersionOverride
      * @see #allowVersionEnvvar
-     * @see #allowBRANCH_NAME_PR
+     * @see #allowVersionBRANCH_NAME_PR
      */
 
-    private boolean allowBRANCH_NAME = false;
+    private boolean allowVersionBRANCH_NAME = false;
     /**
      * Multi-Branch Pipeline support for pull requests sets
      * {@code BRANCH_NAME="PR-123"} and keeps actual source
      * and target branch names in {@code CHANGE_BRANCH} and
      * {@code CHANGE_TARGET} respectively. This toggle lets
-     * {@link #allowBRANCH_NAME} handling logic take this
+     * {@link #allowVersionBRANCH_NAME} handling logic take this
      * nuance into account when looking for the namesake
      * branch in {@code @Library('libname@${BRANCH_NAME}')}.<br/>
      *
@@ -128,9 +128,9 @@ public class LibraryConfiguration extends AbstractDescribableImpl<LibraryConfigu
      *
      * @see #allowVersionOverride
      * @see #allowVersionEnvvar
-     * @see #allowBRANCH_NAME
+     * @see #allowVersionBRANCH_NAME
      */
-    private boolean allowBRANCH_NAME_PR = false;
+    private boolean allowVersionBRANCH_NAME_PR = false;
 
     /** Print {@link #defaultedVersion} progress resolving literal
      * {@code ${BRANCH_NAME}} or {@code ${env.VARNAME}} patterns as
@@ -139,7 +139,7 @@ public class LibraryConfiguration extends AbstractDescribableImpl<LibraryConfigu
      * but is primarily intended for programmatic consumption
      * e.g. in unit-tests.
      *
-     * @see #allowBRANCH_NAME
+     * @see #allowVersionBRANCH_NAME
      * @see #allowVersionEnvvar
      */
     private boolean traceDefaultedVersion = false;
@@ -219,12 +219,12 @@ public class LibraryConfiguration extends AbstractDescribableImpl<LibraryConfigu
      * definition. If such branch name does not exist, fall back to retrieve() defaultVersion.
      */
 
-    public boolean isAllowBRANCH_NAME() {
-        return allowBRANCH_NAME;
+    public boolean isAllowVersionBRANCH_NAME() {
+        return allowVersionBRANCH_NAME;
     }
 
-    @DataBoundSetter public void setAllowBRANCH_NAME(boolean allowBRANCH_NAME) {
-        this.allowBRANCH_NAME = allowBRANCH_NAME;
+    @DataBoundSetter public void setAllowVersionBRANCH_NAME(boolean allowVersionBRANCH_NAME) {
+        this.allowVersionBRANCH_NAME = allowVersionBRANCH_NAME;
     }
 
     public boolean isTraceDefaultedVersion() {
@@ -235,12 +235,12 @@ public class LibraryConfiguration extends AbstractDescribableImpl<LibraryConfigu
         this.traceDefaultedVersion = traceDefaultedVersion;
     }
 
-    public boolean isAllowBRANCH_NAME_PR() {
-        return allowBRANCH_NAME_PR;
+    public boolean isAllowVersionBRANCH_NAME_PR() {
+        return allowVersionBRANCH_NAME_PR;
     }
 
-    @DataBoundSetter public void setAllowBRANCH_NAME_PR(boolean allowBRANCH_NAME_PR) {
-        this.allowBRANCH_NAME_PR = allowBRANCH_NAME_PR;
+    @DataBoundSetter public void setAllowVersionBRANCH_NAME_PR(boolean allowVersionBRANCH_NAME_PR) {
+        this.allowVersionBRANCH_NAME_PR = allowVersionBRANCH_NAME_PR;
     }
 
     /**
@@ -738,7 +738,7 @@ public class LibraryConfiguration extends AbstractDescribableImpl<LibraryConfigu
             } else {
                 return defaultVersion;
             }
-        } else if (allowBRANCH_NAME && "${BRANCH_NAME}".equals(version)) {
+        } else if (allowVersionBRANCH_NAME && "${BRANCH_NAME}".equals(version)) {
             String runVersion = null;
             Item runParent = null;
             if (run != null && listener != null) {
@@ -861,7 +861,7 @@ public class LibraryConfiguration extends AbstractDescribableImpl<LibraryConfigu
                     return runVersion;
                 }
 
-                if (runVersion.startsWith("PR-") && allowBRANCH_NAME_PR) {
+                if (runVersion.startsWith("PR-") && allowVersionBRANCH_NAME_PR) {
                     // MultiBranch Pipeline support for pull requests
                     // sets BRANCH_NAME="PR-123" and keeps source
                     // and target branch names in CHANGE_BRANCH and
@@ -906,7 +906,7 @@ public class LibraryConfiguration extends AbstractDescribableImpl<LibraryConfigu
                             return runVersion;
                         }
                     }
-                } // else not a PR or not allowBRANCH_NAME_PR
+                } // else not a PR or not allowVersionBRANCH_NAME_PR
             }
 
             // No retriever, or its validateVersion() did not confirm
@@ -947,12 +947,12 @@ public class LibraryConfiguration extends AbstractDescribableImpl<LibraryConfigu
         }
 
         @RequirePOST
-        public FormValidation doCheckDefaultVersion(@AncestorInPath Item context, @QueryParameter String defaultVersion, @QueryParameter boolean implicit, @QueryParameter boolean allowVersionOverride, @QueryParameter boolean allowVersionEnvvar, @QueryParameter boolean allowBRANCH_NAME, @QueryParameter boolean allowBRANCH_NAME_PR, @QueryParameter String name) {
+        public FormValidation doCheckDefaultVersion(@AncestorInPath Item context, @QueryParameter String defaultVersion, @QueryParameter boolean implicit, @QueryParameter boolean allowVersionOverride, @QueryParameter boolean allowVersionEnvvar, @QueryParameter boolean allowVersionBRANCH_NAME, @QueryParameter boolean allowVersionBRANCH_NAME_PR, @QueryParameter String name) {
             if (defaultVersion.isEmpty()) {
                 if (implicit) {
                     return FormValidation.error("If you load a library implicitly, you must specify a default version.");
                 }
-                if (allowBRANCH_NAME) {
+                if (allowVersionBRANCH_NAME) {
                     return FormValidation.error("If you allow use of literal '${BRANCH_NAME}' for overriding a default version, you must define that version as fallback.");
                 }
                 if (allowVersionEnvvar) {
@@ -961,13 +961,13 @@ public class LibraryConfiguration extends AbstractDescribableImpl<LibraryConfigu
                 if (!allowVersionOverride) {
                     return FormValidation.error("If you deny overriding a default version, you must define that version.");
                 }
-                if (allowBRANCH_NAME_PR) {
+                if (allowVersionBRANCH_NAME_PR) {
                     return FormValidation.warning("This setting has no effect when you do not allow use of literal '${BRANCH_NAME}' for overriding a default version");
                 }
                 return FormValidation.ok();
             } else {
                 if ("${BRANCH_NAME}".equals(defaultVersion)) {
-                    if (!allowBRANCH_NAME) {
+                    if (!allowVersionBRANCH_NAME) {
                         return FormValidation.error("Use of literal '${BRANCH_NAME}' not allowed in this configuration.");
                     }
 

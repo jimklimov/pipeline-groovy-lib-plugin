@@ -403,7 +403,7 @@ public class SCMSourceRetrieverTest {
         LibraryConfiguration lc = new LibraryConfiguration("branchylib", scm);
         lc.setDefaultVersion("master");
         lc.setIncludeInChangesets(false);
-        lc.setAllowBRANCH_NAME(true);
+        lc.setAllowVersionBRANCH_NAME(true);
         lc.setTraceDefaultedVersion(true);
         GlobalLibraries.get().setLibraries(Collections.singletonList(lc));
 
@@ -455,7 +455,7 @@ public class SCMSourceRetrieverTest {
         lc.setDefaultVersion("master");
         lc.setIncludeInChangesets(false);
         lc.setAllowVersionOverride(true);
-        lc.setAllowBRANCH_NAME(true);
+        lc.setAllowVersionBRANCH_NAME(true);
         lc.setTraceDefaultedVersion(true);
 
         sampleRepo2ContentMasterFeature();
@@ -464,7 +464,7 @@ public class SCMSourceRetrieverTest {
         lc2.setDefaultVersion("master");
         lc2.setIncludeInChangesets(false);
         lc2.setAllowVersionOverride(true);
-        lc2.setAllowBRANCH_NAME(true);
+        lc2.setAllowVersionBRANCH_NAME(true);
         lc2.setTraceDefaultedVersion(true);
 
         // Configure two libs to make a mess :)
@@ -507,7 +507,7 @@ public class SCMSourceRetrieverTest {
         LibraryConfiguration lc = new LibraryConfiguration("branchylib", scm);
         lc.setDefaultVersion("master");
         lc.setIncludeInChangesets(false);
-        lc.setAllowBRANCH_NAME(true);
+        lc.setAllowVersionBRANCH_NAME(true);
         lc.setTraceDefaultedVersion(true);
         GlobalLibraries.get().setLibraries(Collections.singletonList(lc));
 
@@ -551,12 +551,12 @@ public class SCMSourceRetrieverTest {
         r.assertLogContains("Loading library branchylib@master", b3);
         r.assertLogContains("something special", b3);
 
-        // TODO: test lc.setAllowBRANCH_NAME_PR(true) for PR builds
+        // TODO: test lc.setAllowVersionBRANCH_NAME_PR(true) for PR builds
     }
 
     @Issue("JENKINS-69731")
     @Test public void checkDefaultVersion_MBP_staticStrings() throws Exception {
-        // Test that lc.setAllowBRANCH_NAME(false) does not
+        // Test that lc.setAllowVersionBRANCH_NAME(false) does not
         // preclude fixed branch names (they should work),
         // like @Library('branchylib@master')
 
@@ -566,7 +566,7 @@ public class SCMSourceRetrieverTest {
         lc.setDefaultVersion("master");
         lc.setIncludeInChangesets(false);
         lc.setAllowVersionOverride(true);
-        lc.setAllowBRANCH_NAME(false);
+        lc.setAllowVersionBRANCH_NAME(false);
         lc.setTraceDefaultedVersion(true);
         GlobalLibraries.get().setLibraries(Collections.singletonList(lc));
 
@@ -613,7 +613,7 @@ public class SCMSourceRetrieverTest {
 
     @Issue("JENKINS-69731")
     @Test public void checkDefaultVersion_MBP_BRANCH_NAME_notAllowed() throws Exception {
-        // Test that lc.setAllowBRANCH_NAME(false) causes
+        // Test that lc.setAllowVersionBRANCH_NAME(false) causes
         // @Library('libname@${BRANCH_NAME}') to always fail
         // (not treated as a "version override" for funny
         // branch name that is literally "${BRANCH_NAME}").
@@ -624,7 +624,7 @@ public class SCMSourceRetrieverTest {
         lc.setDefaultVersion("master");
         lc.setIncludeInChangesets(false);
         lc.setAllowVersionOverride(true);
-        lc.setAllowBRANCH_NAME(false);
+        lc.setAllowVersionBRANCH_NAME(false);
         lc.setTraceDefaultedVersion(true);
         GlobalLibraries.get().setLibraries(Collections.singletonList(lc));
 
@@ -669,7 +669,7 @@ public class SCMSourceRetrieverTest {
 
     @Issue("JENKINS-69731")
     @Test public void checkDefaultVersion_MBPsingleBranch_staticStrings() throws Exception {
-        // Test that lc.setAllowBRANCH_NAME(false) does not
+        // Test that lc.setAllowVersionBRANCH_NAME(false) does not
         // preclude fixed branch names (they should work),
         // like @Library('branchylib@feature') when used
         // for MBP with "Single repository and branch" as
@@ -681,7 +681,7 @@ public class SCMSourceRetrieverTest {
         lc.setDefaultVersion("master");
         lc.setIncludeInChangesets(false);
         lc.setAllowVersionOverride(true);
-        lc.setAllowBRANCH_NAME(false);
+        lc.setAllowVersionBRANCH_NAME(false);
         lc.setTraceDefaultedVersion(true);
         GlobalLibraries.get().setLibraries(Collections.singletonList(lc));
 
@@ -770,7 +770,7 @@ public class SCMSourceRetrieverTest {
         lc.setDefaultVersion("master");
         lc.setIncludeInChangesets(false);
         lc.setAllowVersionOverride(true);
-        lc.setAllowBRANCH_NAME(true);
+        lc.setAllowVersionBRANCH_NAME(true);
         lc.setTraceDefaultedVersion(true);
         GlobalLibraries.get().setLibraries(Collections.singletonList(lc));
 
@@ -859,7 +859,7 @@ public class SCMSourceRetrieverTest {
 
     @Issue("JENKINS-69731")
     @Test public void checkDefaultVersion_singleBranch_staticStrings() throws Exception {
-        // Test that lc.setAllowBRANCH_NAME(false) does not
+        // Test that lc.setAllowVersionBRANCH_NAME(false) does not
         // preclude fixed branch names (they should work),
         // like @Library('branchylib@master') when used for
         // a simple "Pipeline" job with static SCM source.
@@ -870,7 +870,7 @@ public class SCMSourceRetrieverTest {
         lc.setDefaultVersion("master");
         lc.setIncludeInChangesets(false);
         lc.setAllowVersionOverride(true);
-        lc.setAllowBRANCH_NAME(false);
+        lc.setAllowVersionBRANCH_NAME(false);
         lc.setTraceDefaultedVersion(true);
         GlobalLibraries.get().setLibraries(Collections.singletonList(lc));
 
@@ -895,7 +895,7 @@ public class SCMSourceRetrieverTest {
 
     @Issue("JENKINS-69731")
     @Test public void checkDefaultVersion_singleBranch_BRANCH_NAME() throws Exception {
-        // Test that lc.setAllowBRANCH_NAME(true) enables
+        // Test that lc.setAllowVersionBRANCH_NAME(true) enables
         // @Library('branchylib@${BRANCH_NAME}') also for
         // a simple "Pipeline" job with static SCM source,
         // and that even lc.setAllowVersionOverride(false)
@@ -910,7 +910,7 @@ public class SCMSourceRetrieverTest {
         lc.setDefaultVersion("master");
         lc.setIncludeInChangesets(false);
         lc.setAllowVersionOverride(false);
-        lc.setAllowBRANCH_NAME(true);
+        lc.setAllowVersionBRANCH_NAME(true);
         lc.setTraceDefaultedVersion(true);
         GlobalLibraries.get().setLibraries(Collections.singletonList(lc));
 
@@ -961,7 +961,7 @@ public class SCMSourceRetrieverTest {
         lc.setDefaultVersion("master");
         lc.setIncludeInChangesets(false);
         lc.setAllowVersionOverride(false);
-        lc.setAllowBRANCH_NAME(true);
+        lc.setAllowVersionBRANCH_NAME(true);
         lc.setTraceDefaultedVersion(true);
         GlobalLibraries.get().setLibraries(Collections.singletonList(lc));
 
@@ -1079,7 +1079,7 @@ public class SCMSourceRetrieverTest {
         lc.setDefaultVersion("master");
         lc.setIncludeInChangesets(false);
         lc.setAllowVersionOverride(false);
-        lc.setAllowBRANCH_NAME(true);
+        lc.setAllowVersionBRANCH_NAME(true);
         lc.setTraceDefaultedVersion(true);
         GlobalLibraries.get().setLibraries(Collections.singletonList(lc));
 
@@ -1143,7 +1143,7 @@ public class SCMSourceRetrieverTest {
         lc.setDefaultVersion("master");
         lc.setIncludeInChangesets(false);
         lc.setAllowVersionOverride(false);
-        lc.setAllowBRANCH_NAME(true);
+        lc.setAllowVersionBRANCH_NAME(true);
         lc.setTraceDefaultedVersion(true);
         GlobalLibraries.get().setLibraries(Collections.singletonList(lc));
 
