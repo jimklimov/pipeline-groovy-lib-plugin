@@ -32,7 +32,9 @@ import hudson.Util;
 import hudson.model.AbstractDescribableImpl;
 import hudson.model.Descriptor;
 import hudson.model.DescriptorVisibilityFilter;
+import hudson.model.EnvironmentContributor;
 import hudson.model.Item;
+import hudson.model.ParametersAction;
 import hudson.model.Run;
 import hudson.model.TaskListener;
 import hudson.scm.SCM;
@@ -85,7 +87,10 @@ public class LibraryConfiguration extends AbstractDescribableImpl<LibraryConfigu
      * {@code @Library('libname@${env.VARNAME}')}
      * to be dynamically resolved via current build's
      * {@link Run#getEnvironment(TaskListener)},
-     * if that provides a {@code VARNAME}.
+     * which aggregates global config, node properties,
+     * {@link EnvironmentContributor}, and build parameters
+     * (since {@link ParametersAction} injects each parameter
+     * as an env var), if any of that provides a {@code VARNAME}.
      * Fall back to the configured default branch if
      * that environment variable can't be resolved.
      *
