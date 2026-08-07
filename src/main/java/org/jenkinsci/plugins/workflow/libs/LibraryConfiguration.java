@@ -73,7 +73,25 @@ public class LibraryConfiguration extends AbstractDescribableImpl<LibraryConfigu
     private final LibraryRetriever retriever;
     private String defaultVersion;
     private boolean implicit;
+
+    /**
+     * General permission to use a {@code @Library} revision other
+     * than the default one set in global Jenkins configuration.
+     */
     private boolean allowVersionOverride = true;
+
+    /**
+     * The toggle to allow literal revision specifier
+     * {@code @Library('libname@${env.VARNAME}')}
+     * to be dynamically resolved via current build's
+     * {@link Run#getEnvironment(TaskListener)},
+     * if that provides a {@code VARNAME}.
+     * Fall back to the configured default branch if
+     * that environment variable can't be resolved.
+     *
+     * @see #allowVersionOverride
+     * @see #allowBRANCH_NAME
+     */
     private boolean allowVersionEnvvar = false;
 
     /**
@@ -89,8 +107,11 @@ public class LibraryConfiguration extends AbstractDescribableImpl<LibraryConfigu
      * traditions) due to link with handling of a literal
      * {@code ${BRANCH_NAME}} as the library revision.
      *
+     * @see #allowVersionOverride
+     * @see #allowVersionEnvvar
      * @see #allowBRANCH_NAME_PR
      */
+
     private boolean allowBRANCH_NAME = false;
     /**
      * Multi-Branch Pipeline support for pull requests sets
@@ -105,17 +126,21 @@ public class LibraryConfiguration extends AbstractDescribableImpl<LibraryConfigu
      * traditions) due to link with handling of a literal
      * {@code ${BRANCH_NAME}} as the library revision.
      *
+     * @see #allowVersionOverride
+     * @see #allowVersionEnvvar
      * @see #allowBRANCH_NAME
      */
     private boolean allowBRANCH_NAME_PR = false;
 
-    /** Print defaultedVersion() progress resolving BRANCH_NAME
-     * or env.VARNAME patterns to a build console log. This is
-     * exposed as UI checkbox for deployment troubleshooting,
+    /** Print {@link #defaultedVersion} progress resolving literal
+     * {@code ${BRANCH_NAME}} or {@code ${env.VARNAME}} patterns as
+     * library source code revisions into the build console log.
+     * This is exposed as a UI checkbox for deployment troubleshooting,
      * but is primarily intended for programmatic consumption
      * e.g. in unit-tests.
      *
      * @see #allowBRANCH_NAME
+     * @see #allowVersionEnvvar
      */
     private boolean traceDefaultedVersion = false;
 
