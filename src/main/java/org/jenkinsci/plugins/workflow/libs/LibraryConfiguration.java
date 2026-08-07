@@ -75,14 +75,50 @@ public class LibraryConfiguration extends AbstractDescribableImpl<LibraryConfigu
     private boolean implicit;
     private boolean allowVersionOverride = true;
     private boolean allowVersionEnvvar = false;
+
+    /**
+     * The toggle to allow literal revision specifier
+     * {@code @Library('libname@${BRANCH_NAME}')}
+     * to be dynamically resolved and try the same-named
+     * branch of the library as of the running pipeline
+     * (if loaded from SCM source). Fall back to the
+     * configured default branch if that namesake can't
+     * be resolved.<br/>
+     *
+     * NOTE: Unconventional naming (against Java camel-case
+     * traditions) due to link with handling of a literal
+     * {@code ${BRANCH_NAME}} as the library revision.
+     *
+     * @see #allowBRANCH_NAME_PR
+     */
     private boolean allowBRANCH_NAME = false;
+    /**
+     * Multi-Branch Pipeline support for pull requests sets
+     * {@code BRANCH_NAME="PR-123"} and keeps actual source
+     * and target branch names in {@code CHANGE_BRANCH} and
+     * {@code CHANGE_TARGET} respectively. This toggle lets
+     * {@link #allowBRANCH_NAME} handling logic take this
+     * nuance into account when looking for the namesake
+     * branch in {@code @Library('libname@${BRANCH_NAME}')}.<br/>
+     *
+     * NOTE: Unconventional naming (against Java camel-case
+     * traditions) due to link with handling of a literal
+     * {@code ${BRANCH_NAME}} as the library revision.
+     *
+     * @see #allowBRANCH_NAME
+     */
     private boolean allowBRANCH_NAME_PR = false;
-    // Print defaultedVersion() progress resolving BRANCH_NAME
-    // or env.VARNAME patterns to a build console log. This is
-    // exposed as UI checkbox for deployment troubleshooting,
-    // but is primarily intended for programmatic consumption
-    // e.g. in unit-tests.
+
+    /** Print defaultedVersion() progress resolving BRANCH_NAME
+     * or env.VARNAME patterns to a build console log. This is
+     * exposed as UI checkbox for deployment troubleshooting,
+     * but is primarily intended for programmatic consumption
+     * e.g. in unit-tests.
+     *
+     * @see #allowBRANCH_NAME
+     */
     private boolean traceDefaultedVersion = false;
+
     private boolean includeInChangesets = true;
     private LibraryCachingConfiguration cachingConfiguration = null;
 
